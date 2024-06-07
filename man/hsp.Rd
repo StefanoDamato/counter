@@ -8,10 +8,11 @@ hsp(
   data,
   h = 10,
   intervals = TRUE,
-  level = 0.95,
+  levels = 0.95,
   holdout = FALSE,
   cumulative = FALSE,
-  side = c("both", "upper", "lower")
+  side = c("both", "upper", "lower"),
+  nsim = 1e+05
 )
 }
 \arguments{
@@ -21,7 +22,7 @@ hsp(
 
 \item{intervals}{binary, defining whether to construct prediction intervals or not.}
 
-\item{level}{confidence level for prediction intervals.}
+\item{levels}{confidence levels for prediction intervals.}
 
 \item{holdout}{whether to use holdout of h observations or not.}
 
@@ -29,6 +30,8 @@ hsp(
 
 \item{side}{defines, whether to provide \code{"both"} sides of prediction
 interval or only \code{"upper"}, or \code{"lower"}.}
+
+\item{nsim}{the amount of sample paths for the estimation of the prediction intervals.}
 }
 \value{
 Function returns a model of a class "counter", which contains:
@@ -42,7 +45,7 @@ Function returns a model of a class "counter", which contains:
 \item upper - upper bound of the prediction interval,
 \item actuals - the provided actual values,
 \item holdout - the actual values from the holdout (if holdout was set to TRUE),
-\item level - confidence level used,
+\item levels - confidence levels used,
 \item accuracy - the error measures for the data if the holdout was TRUE.
 }
 }

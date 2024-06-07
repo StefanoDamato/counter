@@ -27,6 +27,6 @@ Suggests:
     testthat,
     rmarkdown,
     knitr
-RoxygenNote: 7.2.1
+RoxygenNote: 7.2.3
 VignetteBuilder: knitr
 Encoding: UTF-8
