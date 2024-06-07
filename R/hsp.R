@@ -119,7 +119,7 @@ hsp <- function(data, h=10, intervals=TRUE, level=0.95, holdout=FALSE,
     
     lambdaForecast <- modelSizes$forecast;
     
-    yFitted <- lambdaFitted * pFitted;
+    yFitted <- lambdaFitted*pFitted;
     
     if(cumulative){
         hFinal <- 1;
@@ -128,21 +128,22 @@ hsp <- function(data, h=10, intervals=TRUE, level=0.95, holdout=FALSE,
         hFinal <- h;
     }
     
-    yForecast <- yUpper <- yLower <- rep(NA,hFinal);
-    levelLow <- levelUp <- levelNew <- level;
-    levelNew[] <- (levelNew-(1 - pForecast[1]))/pForecast[1];
+    yForecast <- rep(NA,hFinal);
+    yUpper <- yLower <- array(dim=c(hFinal, length(level)));
+    
+    levelLow <- levelUp <- level;
     levelNew[levelNew<0] <- 0;
     
     if(side=="both"){
-        levelLow[] <- (1-levelNew)/2;
-        levelUp[] <- (1+levelNew)/2;
+        levelLow[] <- (1-level)/2;
+        levelUp[] <- (1+level)/2;
     }
     else if(side=="upper"){
         levelLow[] <- 0;
-        levelUp[] <- levelNew;
+        levelUp[] <- level;
     }
     else{
-        levelLow[] <- 1-levelNew;
+        levelLow[] <- 1-level;
         levelUp[] <- 1;
     }
     levelLow[levelLow<0] <- 0;
@@ -152,7 +153,7 @@ hsp <- function(data, h=10, intervals=TRUE, level=0.95, holdout=FALSE,
     ySimulated <- matrix(NA, nsim, h);
     
     for(i in 1:h){
-        ySimulated[,i] <- rpois(100000,lambdaForecast[i]-1)+1;
+        ySimulated[,i] <- (rpois(100000,lambdaForecast[i]-1)+1)*(as.integer(runif(100) < pForecast[i]));
     }
     
     if(cumulative){
@@ -165,8 +166,8 @@ hsp <- function(data, h=10, intervals=TRUE, level=0.95, holdout=FALSE,
     }
     else{
         if(intervals){
-            yUpper[] <- apply(ySimulated,2,quantile,probs=levelUp);
-            yLower[] <- apply(ySimulated,2,quantile,probs=levelLow);
+            yUpper[] <- t(apply(ySimulated,2,quantile,probs=levelUp));
+            yLower[] <- t(apply(ySimulated,2,quantile,probs=levelLow));
         }
         yForecast[] <- apply(ySimulated,2,mean);
     }
@@ -193,8 +194,8 @@ hsp <- function(data, h=10, intervals=TRUE, level=0.95, holdout=FALSE,
     }
     
     yForecast <- ts(pForecast*yForecast,start=yHoldoutStart,frequency=datafreq);
-    yUpper <- ts(yUpper,start=yHoldoutStart,frequency=datafreq);
-    yLower <- ts(yLower,start=yHoldoutStart,frequency=datafreq);
+    yUpper <- ts(yUpper,start=yHoldoutStart,frequency=datafreq,names=as.character(levelUp));
+    yLower <- ts(yLower,start=yHoldoutStart,frequency=datafreq,names=as.character(levelLow));
     yFitted <- ts(yFitted,start=start(y),frequency=datafreq)
     
     model <- list(model="HSP",occurrence=modelOccurrence,sizes=modelSizes,
@@ -203,3 +204,9 @@ hsp <- function(data, h=10, intervals=TRUE, level=0.95, holdout=FALSE,
 
     return(structure(model, class="counter"));
 }
+
+
+model = hsp(train_y, level=c(0.5, 0.9, 0.99), side='both', cumulative=F)
+model$upper
+model$lower
+model$forecast

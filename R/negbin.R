@@ -96,7 +96,8 @@ negbin <- function(data, h=10, intervals=TRUE, level=0.95, holdout=FALSE,
     else{
         hFinal <- h;
     }
-    yForecast <- yUpper <- yLower <- rep(NA,hFinal);
+    yForecast <- rep(NA,hFinal);
+    yUpper <- yLower <- array(dim=c(hFinal, length(level)))
     atForecast <- rep(NA,h);
     
     muFitter <- function(mu0, alpha){
@@ -169,8 +170,8 @@ negbin <- function(data, h=10, intervals=TRUE, level=0.95, holdout=FALSE,
     }
     else{
         if(intervals){
-            yUpper[] <- apply(ySimulated,2,quantile,probs=levelUp);
-            yLower[] <- apply(ySimulated,2,quantile,probs=levelLow);
+            yUpper[] <- t(apply(ySimulated,2,quantile,probs=levelUp));
+            yLower[] <- t(apply(ySimulated,2,quantile,probs=levelLow));
         }
         yForecast[] <- apply(ySimulated,2,mean);
     }
@@ -196,8 +197,8 @@ negbin <- function(data, h=10, intervals=TRUE, level=0.95, holdout=FALSE,
     }
     
     yForecast <- ts(yForecast,start=yHoldoutStart,frequency=datafreq);
-    yUpper <- ts(yUpper,start=yHoldoutStart,frequency=datafreq);
-    yLower <- ts(yLower,start=yHoldoutStart,frequency=datafreq);
+    yUpper <- ts(yUpper,start=yHoldoutStart,frequency=datafreq,names=as.character(levelUp));
+    yLower <- ts(yLower,start=yHoldoutStart,frequency=datafreq,names=as.character(levelLow));
     yFitted <- ts(yFitted,start=start(y),frequency=datafreq);
     at <- ts(c(at,atForecast),start=start(y),frequency=datafreq);
     
