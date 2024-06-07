@@ -8,11 +8,12 @@
 #' @param data the vector of values (time series vector).
 #' @param h forecasting horizon.
 #' @param intervals binary, defining whether to construct prediction intervals or not.
-#' @param level confidence level for prediction intervals.
+#' @param levels confidence levels for prediction intervals.
 #' @param holdout whether to use holdout of h observations or not.
 #' @param cumulative if \code{TRUE}, cumulative values are produced.
 #' @param side defines, whether to provide \code{"both"} sides of prediction
 #' interval or only \code{"upper"}, or \code{"lower"}.
+#' @param nsim the amount of sample paths for the estimation of the prediction intervals.
 #'
 #' @return Function returns a model of a class "counter", which contains:
 #' \itemize{
@@ -25,7 +26,7 @@
 #' \item upper - upper bound of the prediction interval,
 #' \item actuals - the provided actual values,
 #' \item holdout - the actual values from the holdout (if holdout was set to TRUE),
-#' \item level - confidence level used,
+#' \item levels - confidence levels used,
 #' \item probability - the probability of success,
 #' \item dispersion - the dispersion variable,
 #' \item alpha - smoothing parameter of the model,
@@ -54,8 +55,8 @@
 #' @importFrom nloptr nloptr
 #' @importFrom stats deltat dnbinom frequency quantile rnbinom rpois start time ts
 #' @export negbin
-negbin <- function(data, h=10, intervals=TRUE, level=0.95, holdout=FALSE,
-                   cumulative=FALSE, side=c("both","upper","lower")){
+negbin <- function(data, h=10, intervals=TRUE, levels=0.95, holdout=FALSE,
+                   cumulative=FALSE, side=c("both","upper","lower"), nsim=100000){
     
     side <- match.arg(side);
     
@@ -97,7 +98,7 @@ negbin <- function(data, h=10, intervals=TRUE, level=0.95, holdout=FALSE,
         hFinal <- h;
     }
     yForecast <- rep(NA,hFinal);
-    yUpper <- yLower <- array(dim=c(hFinal, length(level)))
+    yUpper <- yLower <- array(dim=c(hFinal, length(levels)))
     atForecast <- rep(NA,h);
     
     muFitter <- function(mu0, alpha){
@@ -138,40 +139,39 @@ negbin <- function(data, h=10, intervals=TRUE, level=0.95, holdout=FALSE,
     }
     atForecast[] <- at[length(at)];
     
-    levelLow <- levelUp <- levelNew <- level;
+    levelsLow <- levelsUp <- levelsNew <- levels;
     if(side=="both"){
-        levelLow[] <- (1-levelNew)/2;
-        levelUp[] <- (1+levelNew)/2;
+        levelsLow[] <- (1-levelsNew)/2;
+        levelsUp[] <- (1+levelsNew)/2;
     }
     else if(side=="upper"){
-        levelLow[] <- 0;
-        levelUp[] <- levelNew;
+        levelsLow[] <- 0;
+        levelsUp[] <- levelsNew;
     }
     else{
-        levelLow[] <- 1-levelNew;
-        levelUp[] <- 1;
+        levelsLow[] <- 1-levelsNew;
+        levelsUp[] <- 1;
     }
-    levelLow[levelLow<0] <- 0;
-    levelUp[levelUp<0] <- 0;
+    levelsLow[levelsLow<0] <- 0;
+    levelsUp[levelsUp<0] <- 0;
     
-    nsim <- 100000;
     ySimulated <- matrix(NA, nsim, h);
     
     for(i in 1:h){
-        ySimulated[,i] <- rnbinom(10000,atForecast[i],p);
+        ySimulated[,i] <- rnbinom(nsim,atForecast[i],p);
     }
     
     if(cumulative){
         if(intervals){
-            yUpper[] <- quantile(rowSums(ySimulated),probs=levelUp);
-            yLower[] <- quantile(rowSums(ySimulated),probs=levelLow);
+            yUpper[] <- quantile(rowSums(ySimulated),probs=levelsUp);
+            yLower[] <- quantile(rowSums(ySimulated),probs=levelsLow);
         }
         yForecast[] <- mean(rowSums(ySimulated));
     }
     else{
         if(intervals){
-            yUpper[] <- t(apply(ySimulated,2,quantile,probs=levelUp));
-            yLower[] <- t(apply(ySimulated,2,quantile,probs=levelLow));
+            yUpper[] <- t(apply(ySimulated,2,quantile,probs=levelsUp));
+            yLower[] <- t(apply(ySimulated,2,quantile,probs=levelsLow));
         }
         yForecast[] <- apply(ySimulated,2,mean);
     }
@@ -197,14 +197,14 @@ negbin <- function(data, h=10, intervals=TRUE, level=0.95, holdout=FALSE,
     }
     
     yForecast <- ts(yForecast,start=yHoldoutStart,frequency=datafreq);
-    yUpper <- ts(yUpper,start=yHoldoutStart,frequency=datafreq,names=as.character(levelUp));
-    yLower <- ts(yLower,start=yHoldoutStart,frequency=datafreq,names=as.character(levelLow));
+    yUpper <- ts(yUpper,start=yHoldoutStart,frequency=datafreq,names=as.character(levelsUp));
+    yLower <- ts(yLower,start=yHoldoutStart,frequency=datafreq,names=as.character(levelsLow));
     yFitted <- ts(yFitted,start=start(y),frequency=datafreq);
     at <- ts(c(at,atForecast),start=start(y),frequency=datafreq);
     
     model <- list(model="NegBin", fitted=yFitted,forecast=yForecast,lower=yLower,upper=yUpper,
                   probabilty=p,dispersion=at,alpha=A[2],initial=A[1],
-                  actuals=data,holdout=yHoldout,accuracy=errormeasures,level=level);
+                  actuals=data,holdout=yHoldout,accuracy=errormeasures,levels=levels);
 
     return(structure(model, class="counter"));
     
